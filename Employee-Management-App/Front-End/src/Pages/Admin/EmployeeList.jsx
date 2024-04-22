@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import EmployeeForm from "../Admin/EmployeeForm";
+
 const EmployeeList = () => {
   const [employeeList, setEmployeeList] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -16,7 +17,9 @@ const EmployeeList = () => {
   const [username, setUsername] = useState("");
   const [message, setMessage] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [dataLoaded, setDataLoaded] = useState(false);
   // Fetch username from localStorage on component mount
   useEffect(() => {
     const storedUsername = localStorage.getItem("username");
@@ -92,13 +95,13 @@ const EmployeeList = () => {
       if (!response.ok) {
         const errorData = await response.json();
         if (errorData && errorData.message) {
-          setMessage(errorData.message);
+          setErrorMessage(errorData.message);
         } else {
-          setMessage("An error occurred. Please try again later.");
+          setErrorMessage("An error occurred. Please try again later.");
         }
       } else {
         const data = await response.json();
-        setMessage(data.message);
+        setSuccessMessage(data.message);
         setEmployee({
           name: "",
           email: "",
@@ -113,7 +116,7 @@ const EmployeeList = () => {
         await fetchEmployeeData(username.toLowerCase());
       }
     } catch (error) {
-      setMessage("An error occurred. Please try again later.");
+      setErrorMessage("An error occurred. Please try again later.");
       console.error("Error:", error);
     }
   };
@@ -135,9 +138,10 @@ const EmployeeList = () => {
 
       const data = await response.json();
       setEmployeeList(data);
+      setDataLoaded(true); // Set dataLoaded to true after fetching data
     } catch (error) {
       console.error("Error fetching employee data:", error);
-      setMessage("Failed to fetch employee data. Please try again later.");
+      setErrorMessage("Failed to fetch employee data. Please try again later.");
     }
   };
 
@@ -166,13 +170,15 @@ const EmployeeList = () => {
       await fetchEmployeeData(username.toLowerCase());
     } catch (error) {
       console.error("Error deleting employee:", error);
-      setMessage("Failed to delete employee. Please try again later.");
+      setErrorMessage("Failed to delete employee. Please try again later.");
     }
   };
 
   // Function to close the form
   const handleCloseForm = () => {
     setShowForm(false);
+    setSuccessMessage("");
+    setErrorMessage("");
     setSelectedEmployee(null); // Reset selected employee when form is closed
     setEmployee({
       name: "",
@@ -195,6 +201,8 @@ const EmployeeList = () => {
         >
           Create Employee
         </button>
+        {successMessage && <p className="text-green-600">{successMessage}</p>}
+        {errorMessage && <p className="text-red-600">{errorMessage}</p>}
         <EmployeeForm
           handleSubmit={handleSubmit}
           handleChange={handleChange}
@@ -203,67 +211,86 @@ const EmployeeList = () => {
           showForm={showForm}
           handleCloseForm={handleCloseForm}
           selectedEmployee={selectedEmployee}
-          message={message}
+          message={errorMessage} // Pass error message to form
         />
-        <h1 className="text-3xl font-bold mb-4">Employee List</h1>
-        <div className="mt-8 overflow-x-auto">
-          <table className="table-auto w-full">
-            <thead>
-              <tr>
-                <th className="px-4 py-2">Unique Id</th>
-                <th className="px-4 py-2">Image</th>
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Email</th>
-                <th className="px-4 py-2">Mobile No</th>
-                <th className="px-4 py-2">Designation</th>
-                <th className="px-4 py-2">Gender</th>
-                <th className="px-4 py-2">Course</th>
-                <th className="px-4 py-2">Joined At</th>
-                <th className="px-4 py-2">Action</th>
-              </tr>
-            </thead>
-            {/* Table body */}
-            <tbody>
-              {employeeList.map((employee) => (
-                <tr key={employee._id} className="border-b border-gray-200">
-                  <td className="px-4 py-2 text-sm">{employee._id}</td>
-                  <td className="px-4 py-2">
-                    <img
-                      src={employee.imageUrl}
-                      alt="Employee"
-                      className="w-12 h-12 object-cover rounded-full"
-                    />
-                  </td>
-                  <td className="px-4 py-2 text-sm">{employee.name}</td>
-                  <td className="px-4 py-2 text-sm">{employee.email}</td>
-                  <td className="px-4 py-2 text-sm">{employee.phoneNumber}</td>
-                  <td className="px-4 py-2 text-sm">{employee.designation}</td>
-                  <td className="px-4 py-2 text-sm">{employee.gender}</td>
-                  <td className="px-4 py-2 text-sm">
-                    {employee.course.join(", ")}
-                  </td>
-                  <td className="px-4 py-2 text-sm">
-                    {new Date(employee.createdAt).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-2 flex gap-3 ">
-                    <button
-                      onClick={() => handleEdit(employee)}
-                      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded focus:outline-none focus:shadow-outline text-sm mr-2"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(employee._id)}
-                      className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded focus:outline-none focus:shadow-outline text-sm"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/* Conditionally render the table and the text */}
+        {dataLoaded ? (
+          employeeList.length > 0 ? (
+            <>
+              <h1 className="text-3xl font-bold mb-4">Employee List</h1>
+              <div className="mt-8 overflow-x-auto">
+                <table className="table-auto w-full">
+                  {/* Table header */}
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-2">Unique Id</th>
+                      <th className="px-4 py-2">Image</th>
+                      <th className="px-4 py-2">Name</th>
+                      <th className="px-4 py-2">Email</th>
+                      <th className="px-4 py-2">Mobile No</th>
+                      <th className="px-4 py-2">Designation</th>
+                      <th className="px-4 py-2">Gender</th>
+                      <th className="px-4 py-2">Course</th>
+                      <th className="px-4 py-2">Joined At</th>
+                      <th className="px-4 py-2">Action</th>
+                    </tr>
+                  </thead>
+                  {/* Table body */}
+                  <tbody>
+                    {employeeList.map((employee) => (
+                      <tr
+                        key={employee._id}
+                        className="border-b border-gray-200"
+                      >
+                        <td className="px-4 py-2 text-sm">{employee._id}</td>
+                        <td className="px-4 py-2">
+                          <img
+                            src={employee.imageUrl}
+                            alt="Employee"
+                            className="w-12 h-12 object-cover rounded-full"
+                          />
+                        </td>
+                        <td className="px-4 py-2 text-sm">{employee.name}</td>
+                        <td className="px-4 py-2 text-sm">{employee.email}</td>
+                        <td className="px-4 py-2 text-sm">
+                          {employee.phoneNumber}
+                        </td>
+                        <td className="px-4 py-2 text-sm">
+                          {employee.designation}
+                        </td>
+                        <td className="px-4 py-2 text-sm">{employee.gender}</td>
+                        <td className="px-4 py-2 text-sm">
+                          {employee.course.join(", ")}
+                        </td>
+                        <td className="px-4 py-2 text-sm">
+                          {new Date(employee.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2 flex gap-3 ">
+                          <button
+                            onClick={() => handleEdit(employee)}
+                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded focus:outline-none focus:shadow-outline text-sm mr-2"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(employee._id)}
+                            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded focus:outline-none focus:shadow-outline text-sm"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <p className="text-xl font-semibold">No employees found.</p>
+          )
+        ) : (
+          <p>Loading...</p> // Show loading indicator while data is being fetched
+        )}
       </div>
     </>
   );
